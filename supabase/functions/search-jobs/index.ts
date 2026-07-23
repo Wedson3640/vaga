@@ -22,13 +22,21 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// Stopwords PT/EN comuns — sem isso, "de", "para", "com" etc. viram "palavras-chave"
+// e diluem o score de compatibilidade sem sinal nenhum.
+const STOPWORDS = new Set([
+  "de", "da", "do", "das", "dos", "em", "para", "por", "com", "sem", "sob", "sobre",
+  "um", "uma", "uns", "umas", "os", "as", "que", "se", "sua", "seu", "suas", "seus",
+  "the", "and", "for", "with", "from", "this", "that", "are", "was", "were",
+]);
+
 function extractKeywords(text: string): string[] {
   return Array.from(
     new Set(
       text
         .toLowerCase()
         .split(/[^\p{L}\p{N}]+/u)
-        .filter((word) => word.length >= 3),
+        .filter((word) => word.length >= 3 && !STOPWORDS.has(word)),
     ),
   );
 }
@@ -70,14 +78,19 @@ Deno.serve(async (req) => {
 
     const { data: candidate, error: candError } = await supabase
       .from("candidates")
-      .select("desired_role, location, keywords")
+      .select("desired_role, location, keywords, resume_text")
       .eq("id", searchRequest.candidate_id)
       .single();
     if (candError || !candidate) throw candError ?? new Error("candidate não encontrado");
 
+    // O texto real do currículo (quando disponível) entra junto do cargo digitado para dar
+    // um score de compatibilidade mais honesto do que só repetir os termos da própria busca.
+    const keywordSource = candidate.resume_text
+      ? `${candidate.desired_role} ${candidate.resume_text}`
+      : candidate.desired_role;
     const candidateKeywords = candidate.keywords?.length
       ? candidate.keywords
-      : extractKeywords(candidate.desired_role);
+      : extractKeywords(keywordSource);
 
     const params = new URLSearchParams({
       app_id: ADZUNA_APP_ID,

@@ -35,10 +35,58 @@ function setProgress(step, percent) {
   progressFill.style.width = `${percent}%`;
 }
 
+let resumeText = null;
+let resumeExtractionPromise = null;
+
+const PDFJS_VERSION = "4.7.76";
+
+async function extractResumeText(file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+
+  if (ext === "pdf") {
+    const pdfjsLib = await import(`https://esm.sh/pdfjs-dist@${PDFJS_VERSION}/build/pdf.mjs`);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
+    const buffer = await file.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+    let text = "";
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item) => item.str).join(" ") + "\n";
+    }
+    return text;
+  }
+
+  if (ext === "docx") {
+    const mammoth = await import("https://esm.sh/mammoth@1.8.0");
+    const buffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+    return result.value;
+  }
+
+  // .doc (formato binário legado) não tem extração viável no navegador; segue sem resume_text.
+  return null;
+}
+
 function setSelectedFile(file) {
   if (!file) return;
-  dropzoneText.innerHTML = `Arquivo selecionado:<br><strong>${file.name}</strong>`;
+  dropzoneText.innerHTML = `Arquivo selecionado:<br><strong>${file.name}</strong><br><small>Lendo conteúdo do currículo...</small>`;
   updateSubmitState();
+
+  resumeText = null;
+  resumeExtractionPromise = extractResumeText(file)
+    .then((text) => {
+      resumeText = text;
+      const status = text
+        ? "Currículo lido — vamos usar o conteúdo real no matching."
+        : "Não conseguimos ler o conteúdo deste formato; a busca vai usar só o cargo digitado.";
+      dropzoneText.innerHTML = `Arquivo selecionado:<br><strong>${file.name}</strong><br><small>${status}</small>`;
+    })
+    .catch((err) => {
+      console.warn("Falha ao extrair texto do currículo:", err);
+      resumeText = null;
+      dropzoneText.innerHTML = `Arquivo selecionado:<br><strong>${file.name}</strong><br><small>Não conseguimos ler o conteúdo; a busca vai usar só o cargo digitado.</small>`;
+    });
 }
 
 function updateSubmitState() {
@@ -156,14 +204,22 @@ async function runRealSearch() {
     const { error: uploadError } = await supabase.storage.from("curriculos").upload(filePath, file);
     if (uploadError) throw uploadError;
 
-    setProgress("Registrando candidatura...", 35);
+    setProgress("Lendo conteúdo do currículo...", 25);
+    await resumeExtractionPromise;
+
+    setProgress("Registrando candidatura...", 40);
     // candidates não tem policy de SELECT (dados do currículo não são públicos), e o Postgres
     // aplica a policy de SELECT também no RETURNING de um INSERT — por isso geramos o id no
     // cliente em vez de encadear .select() após o insert.
     const candidateId = crypto.randomUUID();
-    const { error: candidateError } = await supabase
-      .from("candidates")
-      .insert({ id: candidateId, file_name: file.name, file_path: filePath, desired_role: desiredRole, location });
+    const { error: candidateError } = await supabase.from("candidates").insert({
+      id: candidateId,
+      file_name: file.name,
+      file_path: filePath,
+      desired_role: desiredRole,
+      location,
+      resume_text: resumeText,
+    });
     if (candidateError) throw candidateError;
 
     const { data: searchRequest, error: requestError } = await supabase
@@ -211,6 +267,8 @@ restartBtn.addEventListener("click", () => {
   fileInput.value = "";
   desiredRoleInput.value = "";
   locationInput.value = "";
+  resumeText = null;
+  resumeExtractionPromise = null;
   dropzoneText.innerHTML = "Arraste o arquivo aqui ou clique para selecionar<br><small>PDF, DOC ou DOCX</small>";
   updateSubmitState();
   showCard(uploadCard);
