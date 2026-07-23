@@ -239,10 +239,14 @@ async function runRealSearch() {
     await pollSearchRequest(searchRequest.id);
 
     setProgress("Preparando os resultados...", 100);
+    // match_score = 0 significa nenhuma palavra em comum com o currículo/cargo — em geral
+    // lixo (ex: vagas de "CEO" ou "Diretor" vindas de fontes com filtro de relevância fraco).
+    // Escondemos da tela, mas o registro completo continua salvo em search_results.
     const { data: results, error: resultsError } = await supabase
       .from("search_results")
       .select("match_score, matched_keywords, job_postings(title, company, location, url)")
-      .eq("search_request_id", searchRequest.id);
+      .eq("search_request_id", searchRequest.id)
+      .gt("match_score", 0);
     if (resultsError) throw resultsError;
 
     renderResults(results);
