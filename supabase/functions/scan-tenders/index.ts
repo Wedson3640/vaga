@@ -30,10 +30,11 @@ const PAGE_SIZE = 50;
 // Teto de segurança por combinação UF×modalidade (500 registros) — evita que uma
 // modalidade muito movimentada (ex: Pregão Eletrônico) estoure o tempo da function.
 const MAX_PAGES_PER_COMBO = 10;
-// O PNCP tem um rate limit agressivo (confirmado em teste: poucas dezenas de
-// chamadas rápidas já derrubam em 429). Por isso rodamos sequencial, com um
-// intervalo fixo entre chamadas, em vez de paralelizar combinações.
-const REQUEST_DELAY_MS = 700;
+// O PNCP tem um rate limit agressivo (confirmado em teste: em torno de 6-7
+// chamadas seguidas já derruba em 429, mesmo com ~1s de intervalo; com 3s
+// entre chamadas não houve mais erro). Por isso rodamos sequencial, com esse
+// intervalo, em vez de paralelizar combinações.
+const REQUEST_DELAY_MS = 3000;
 const MAX_RETRIES_ON_429 = 4;
 
 function sleep(ms: number) {
