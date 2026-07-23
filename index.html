@@ -8,8 +8,14 @@
 </head>
 <body>
 
+  <div class="page">
+  <nav class="site-nav">
+    <a href="index.html" class="active">Buscar Vagas</a>
+    <a href="editais-arquitetura.html">Editais de Arquitetura</a>
+  </nav>
+
   <main class="card" id="uploadCard">
-    <img src="assets/pip_flight_loop.gif" alt="Pip, the courier bird" class="mascot" id="mascot">
+    <img src="../assets/mascot/pip_flight_loop.gif" alt="Pip, the courier bird" class="mascot" id="mascot">
     <h1>Envie seu currículo</h1>
     <p class="subtitle">Vamos analisar seu perfil e procurar as melhores vagas para você.</p>
 
@@ -30,7 +36,7 @@
   <section class="card hidden" id="loadingCard">
     <div class="radar">
       <div class="radar-sweep"></div>
-      <img src="assets/pip_flight_loop.gif" alt="" class="mascot mascot-flying">
+      <img src="../assets/mascot/pip_flight_loop.gif" alt="" class="mascot mascot-flying">
     </div>
     <h2 id="loadingTitle">Procurando as melhores vagas...</h2>
     <p class="loading-step" id="loadingStep">Enviando currículo</p>
@@ -38,14 +44,14 @@
   </section>
 
   <section class="card hidden" id="errorCard">
-    <img src="assets/pip_flight_loop.gif" alt="Pip" class="mascot">
+    <img src="../assets/mascot/pip_flight_loop.gif" alt="Pip" class="mascot">
     <h2>Ops, algo deu errado</h2>
     <p class="subtitle" id="errorMessage">Não conseguimos concluir a busca. Tente novamente.</p>
     <button id="retryBtn">Tentar novamente</button>
   </section>
 
   <section class="card results-card hidden" id="doneCard">
-    <img src="assets/pip_flight_loop.gif" alt="Pip" class="mascot">
+    <img src="../assets/mascot/pip_flight_loop.gif" alt="Pip" class="mascot">
     <h2>Prontinho!</h2>
     <p class="subtitle" id="doneSubtitle">Encontramos vagas com potencial para o seu perfil.</p>
 
@@ -54,6 +60,7 @@
     <p class="results-note" id="resultsNote">Vagas reais buscadas via Adzuna.</p>
     <button id="restartBtn">Enviar outro currículo</button>
   </section>
+  </div>
 
   <script src="config.js"></script>
   <script type="module" src="app.js"></script>
