@@ -158,24 +158,32 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Edge Functions do Supabase têm só ~2s de tempo de CPU ativo por chamada
+    // (orçamento separado do limite de wall clock). Variar as 4 UF × 11
+    // modalidades numa chamada só estourava esse limite (erro 546
+    // WORKER_RESOURCE_LIMIT). Por isso cada invocação processa **uma UF só**,
+    // recebida no corpo da requisição — o cron semanal dispara uma chamada por
+    // estado (ver instruções de configuração).
+    const body = await req.json().catch(() => ({}));
+    const uf = body?.uf;
+    if (!uf || !UFS.includes(uf)) {
+      return new Response(
+        JSON.stringify({ error: `Informe "uf" no corpo da requisição, um de: ${UFS.join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
     const dataFinal = formatDate(today);
     const dataInicial = formatDate(weekAgo);
-
-    const combos: Array<[string, number]> = [];
-    for (const uf of UFS) {
-      for (const modalidade of MODALIDADES) {
-        combos.push([uf, modalidade]);
-      }
-    }
 
     const allMatches: TenderMatch[] = [];
     let failedCombos = 0;
 
     // Sequencial de propósito (ver comentário de REQUEST_DELAY_MS acima) — o PNCP
     // derruba a conexão com 429 se receber várias chamadas em paralelo.
-    for (const [uf, modalidade] of combos) {
+    for (const modalidade of MODALIDADES) {
       try {
         const matches = await scanCombo(uf, modalidade, dataInicial, dataFinal);
         allMatches.push(...matches);
