@@ -157,16 +157,18 @@ async function runRealSearch() {
     if (uploadError) throw uploadError;
 
     setProgress("Registrando candidatura...", 35);
-    const { data: candidate, error: candidateError } = await supabase
+    // candidates não tem policy de SELECT (dados do currículo não são públicos), e o Postgres
+    // aplica a policy de SELECT também no RETURNING de um INSERT — por isso geramos o id no
+    // cliente em vez de encadear .select() após o insert.
+    const candidateId = crypto.randomUUID();
+    const { error: candidateError } = await supabase
       .from("candidates")
-      .insert({ file_name: file.name, file_path: filePath, desired_role: desiredRole, location })
-      .select("id")
-      .single();
+      .insert({ id: candidateId, file_name: file.name, file_path: filePath, desired_role: desiredRole, location });
     if (candidateError) throw candidateError;
 
     const { data: searchRequest, error: requestError } = await supabase
       .from("search_requests")
-      .insert({ candidate_id: candidate.id })
+      .insert({ candidate_id: candidateId })
       .select("id")
       .single();
     if (requestError) throw requestError;
