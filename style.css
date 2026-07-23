@@ -76,6 +76,33 @@ h2 { font-size: 1.3rem; margin: 0 0 8px; }
 
 .dropzone small { color: var(--text-muted); }
 
+.field-label {
+  display: block;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.text-field {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.text-field::placeholder { color: var(--text-muted); }
+
+.text-field:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 button {
   width: 100%;
   padding: 14px;
@@ -228,6 +255,21 @@ button:not(:disabled):active { transform: scale(0.98); }
   background: #f0b42933;
   color: #f0b429;
 }
+
+.match-low {
+  background: #94a3b833;
+  color: var(--text-muted);
+}
+
+.job-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.job-link:hover { text-decoration: underline; }
 
 .tags {
   display: flex;

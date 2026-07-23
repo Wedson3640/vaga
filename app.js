@@ -1,40 +1,53 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
 const uploadCard = document.getElementById("uploadCard");
 const loadingCard = document.getElementById("loadingCard");
+const errorCard = document.getElementById("errorCard");
 const doneCard = document.getElementById("doneCard");
 
 const dropzone = document.getElementById("dropzone");
 const dropzoneText = document.getElementById("dropzoneText");
 const fileInput = document.getElementById("fileInput");
+const desiredRoleInput = document.getElementById("desiredRole");
+const locationInput = document.getElementById("locationInput");
 const submitBtn = document.getElementById("submitBtn");
 const restartBtn = document.getElementById("restartBtn");
+const retryBtn = document.getElementById("retryBtn");
 
 const loadingStep = document.getElementById("loadingStep");
 const progressFill = document.getElementById("progressFill");
+const errorMessage = document.getElementById("errorMessage");
+const resultsList = document.getElementById("resultsList");
+const doneSubtitle = document.getElementById("doneSubtitle");
+const resultsNote = document.getElementById("resultsNote");
 
-const STEPS = [
-  "Lendo seu currículo",
-  "Identificando habilidades e experiências",
-  "Buscando vagas compatíveis",
-  "Avaliando fit com cada vaga",
-  "Preparando os resultados",
-];
+const ALL_CARDS = [uploadCard, loadingCard, errorCard, doneCard];
 
 function showCard(card) {
-  [uploadCard, loadingCard, doneCard].forEach((c) => c.classList.add("hidden"));
+  ALL_CARDS.forEach((c) => c.classList.add("hidden"));
   card.classList.remove("hidden");
+}
+
+function setProgress(step, percent) {
+  loadingStep.textContent = step;
+  progressFill.style.width = `${percent}%`;
 }
 
 function setSelectedFile(file) {
   if (!file) return;
   dropzoneText.innerHTML = `Arquivo selecionado:<br><strong>${file.name}</strong>`;
-  submitBtn.disabled = false;
+  updateSubmitState();
+}
+
+function updateSubmitState() {
+  submitBtn.disabled = fileInput.files.length === 0 || desiredRoleInput.value.trim() === "";
 }
 
 dropzone.addEventListener("click", () => fileInput.click());
-
-fileInput.addEventListener("change", () => {
-  setSelectedFile(fileInput.files[0]);
-});
+fileInput.addEventListener("change", () => setSelectedFile(fileInput.files[0]));
+desiredRoleInput.addEventListener("input", updateSubmitState);
 
 ["dragenter", "dragover"].forEach((evt) => {
   dropzone.addEventListener(evt, (e) => {
@@ -58,41 +71,145 @@ dropzone.addEventListener("drop", (e) => {
   }
 });
 
-function runFakeProcessing() {
-  showCard(loadingCard);
-  progressFill.style.width = "0%";
+function renderResults(rows) {
+  resultsList.innerHTML = "";
 
-  let stepIndex = 0;
-  loadingStep.textContent = STEPS[0];
+  if (rows.length === 0) {
+    resultsNote.textContent = "Nenhuma vaga encontrada para essas palavras-chave. Tente termos mais amplos.";
+    doneSubtitle.textContent = "Busca concluída, mas sem resultados desta vez.";
+    return;
+  }
 
-  const totalDurationMs = 6000;
-  const stepDurationMs = totalDurationMs / STEPS.length;
+  doneSubtitle.textContent = `Encontramos ${rows.length} vaga(s) com potencial para o seu perfil.`;
+  resultsNote.textContent = "Vagas reais buscadas via Adzuna.";
 
-  const stepInterval = setInterval(() => {
-    stepIndex++;
-    if (stepIndex < STEPS.length) {
-      loadingStep.textContent = STEPS[stepIndex];
+  const sorted = [...rows].sort((a, b) => b.match_score - a.match_score);
+
+  for (const row of sorted) {
+    const job = row.job_postings;
+    const li = document.createElement("li");
+    li.className = "job-card";
+
+    const matchClass = row.match_score >= 80 ? "match-high" : row.match_score >= 50 ? "match-mid" : "match-low";
+    const location = job.location ?? "Localização não informada";
+    const company = job.company ?? "Empresa não informada";
+    const tags = (row.matched_keywords ?? []).slice(0, 5);
+
+    li.innerHTML = `
+      <div class="job-card-top">
+        <div>
+          <p class="job-title">${escapeHtml(job.title)}</p>
+          <p class="job-company">${escapeHtml(company)} &middot; ${escapeHtml(location)}</p>
+        </div>
+        <span class="match-badge ${matchClass}">${Math.round(row.match_score)}% fit</span>
+      </div>
+      ${tags.length ? `<div class="tags">${tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+    `;
+
+    if (job.url) {
+      const link = document.createElement("a");
+      link.href = job.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.className = "job-link";
+      link.textContent = "Ver vaga →";
+      li.appendChild(link);
     }
-  }, stepDurationMs);
 
-  requestAnimationFrame(() => {
-    progressFill.style.width = "100%";
-  });
+    resultsList.appendChild(li);
+  }
+}
 
-  setTimeout(() => {
-    clearInterval(stepInterval);
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+async function pollSearchRequest(searchRequestId, { intervalMs = 1500, timeoutMs = 60000 } = {}) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const { data, error } = await supabase
+      .from("search_requests")
+      .select("status, error_message")
+      .eq("id", searchRequestId)
+      .single();
+    if (error) throw error;
+    if (data.status === "done") return;
+    if (data.status === "error") throw new Error(data.error_message || "A busca falhou no servidor.");
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("A busca demorou demais para responder. Tente novamente.");
+}
+
+async function runRealSearch() {
+  showCard(loadingCard);
+  submitBtn.disabled = true;
+
+  try {
+    const file = fileInput.files[0];
+    const desiredRole = desiredRoleInput.value.trim();
+    const location = locationInput.value.trim() || null;
+
+    setProgress("Enviando currículo...", 15);
+    const filePath = `${Date.now()}_${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("curriculos").upload(filePath, file);
+    if (uploadError) throw uploadError;
+
+    setProgress("Registrando candidatura...", 35);
+    const { data: candidate, error: candidateError } = await supabase
+      .from("candidates")
+      .insert({ file_name: file.name, file_path: filePath, desired_role: desiredRole, location })
+      .select("id")
+      .single();
+    if (candidateError) throw candidateError;
+
+    const { data: searchRequest, error: requestError } = await supabase
+      .from("search_requests")
+      .insert({ candidate_id: candidate.id })
+      .select("id")
+      .single();
+    if (requestError) throw requestError;
+
+    setProgress("Buscando vagas reais na Adzuna...", 55);
+    const { error: fnError } = await supabase.functions.invoke("search-jobs", {
+      body: { search_request_id: searchRequest.id },
+    });
+    if (fnError) throw fnError;
+
+    setProgress("Calculando compatibilidade...", 80);
+    await pollSearchRequest(searchRequest.id);
+
+    setProgress("Preparando os resultados...", 100);
+    const { data: results, error: resultsError } = await supabase
+      .from("search_results")
+      .select("match_score, matched_keywords, job_postings(title, company, location, url)")
+      .eq("search_request_id", searchRequest.id);
+    if (resultsError) throw resultsError;
+
+    renderResults(results);
     showCard(doneCard);
-  }, totalDurationMs);
+  } catch (err) {
+    console.error(err);
+    errorMessage.textContent = err.message || "Não conseguimos concluir a busca. Tente novamente.";
+    showCard(errorCard);
+  } finally {
+    submitBtn.disabled = false;
+  }
 }
 
 submitBtn.addEventListener("click", () => {
-  if (fileInput.files.length === 0) return;
-  runFakeProcessing();
+  if (fileInput.files.length === 0 || desiredRoleInput.value.trim() === "") return;
+  runRealSearch();
 });
+
+retryBtn.addEventListener("click", () => showCard(uploadCard));
 
 restartBtn.addEventListener("click", () => {
   fileInput.value = "";
+  desiredRoleInput.value = "";
+  locationInput.value = "";
   dropzoneText.innerHTML = "Arraste o arquivo aqui ou clique para selecionar<br><small>PDF, DOC ou DOCX</small>";
-  submitBtn.disabled = true;
+  updateSubmitState();
   showCard(uploadCard);
 });

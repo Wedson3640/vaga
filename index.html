@@ -1,22 +1,28 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Job Search â€” Enviar CurrÃ­culo</title>
+<title>AI Job Search — Enviar Currículo</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
   <main class="card" id="uploadCard">
     <img src="assets/pip_flight_loop.gif" alt="Pip, the courier bird" class="mascot" id="mascot">
-    <h1>Envie seu currÃ­culo</h1>
-    <p class="subtitle">Vamos analisar seu perfil e procurar as melhores vagas para vocÃª.</p>
+    <h1>Envie seu currículo</h1>
+    <p class="subtitle">Vamos analisar seu perfil e procurar as melhores vagas para você.</p>
 
     <label for="fileInput" class="dropzone" id="dropzone">
       <span id="dropzoneText">Arraste o arquivo aqui ou clique para selecionar<br><small>PDF, DOC ou DOCX</small></span>
     </label>
     <input type="file" id="fileInput" accept=".pdf,.doc,.docx" hidden>
+
+    <label class="field-label" for="desiredRole">Cargo ou palavras-chave desejadas</label>
+    <input type="text" id="desiredRole" class="text-field" placeholder="ex: analista de dados, ERP, logística">
+
+    <label class="field-label" for="locationInput">Cidade/Estado (opcional)</label>
+    <input type="text" id="locationInput" class="text-field" placeholder="ex: São Paulo">
 
     <button id="submitBtn" disabled>Iniciar busca</button>
   </main>
@@ -27,80 +33,29 @@
       <img src="assets/pip_flight_loop.gif" alt="" class="mascot mascot-flying">
     </div>
     <h2 id="loadingTitle">Procurando as melhores vagas...</h2>
-    <p class="loading-step" id="loadingStep">Lendo seu currÃ­culo</p>
+    <p class="loading-step" id="loadingStep">Enviando currículo</p>
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </section>
+
+  <section class="card hidden" id="errorCard">
+    <img src="assets/pip_flight_loop.gif" alt="Pip" class="mascot">
+    <h2>Ops, algo deu errado</h2>
+    <p class="subtitle" id="errorMessage">Não conseguimos concluir a busca. Tente novamente.</p>
+    <button id="retryBtn">Tentar novamente</button>
   </section>
 
   <section class="card results-card hidden" id="doneCard">
     <img src="assets/pip_flight_loop.gif" alt="Pip" class="mascot">
     <h2>Prontinho!</h2>
-    <p class="subtitle">Encontramos 4 vagas com potencial para o seu perfil.</p>
+    <p class="subtitle" id="doneSubtitle">Encontramos vagas com potencial para o seu perfil.</p>
 
-    <ul class="results-list" id="resultsList">
-      <li class="job-card">
-        <div class="job-card-top">
-          <div>
-            <p class="job-title">Analista de Dados Pleno</p>
-            <p class="job-company">Nexora Tech &middot; SÃ£o Paulo, SP (remoto)</p>
-          </div>
-          <span class="match-badge match-high">92% fit</span>
-        </div>
-        <div class="tags">
-          <span class="tag">SQL</span>
-          <span class="tag">Python</span>
-          <span class="tag">Power BI</span>
-        </div>
-      </li>
+    <ul class="results-list" id="resultsList"></ul>
 
-      <li class="job-card">
-        <div class="job-card-top">
-          <div>
-            <p class="job-title">Especialista em AutomaÃ§Ã£o de Processos</p>
-            <p class="job-company">Vertex Sistemas &middot; Curitiba, PR</p>
-          </div>
-          <span class="match-badge match-high">88% fit</span>
-        </div>
-        <div class="tags">
-          <span class="tag">RPA</span>
-          <span class="tag">ERP</span>
-          <span class="tag">VBA</span>
-        </div>
-      </li>
-
-      <li class="job-card">
-        <div class="job-card-top">
-          <div>
-            <p class="job-title">Analista de Sistemas ERP</p>
-            <p class="job-company">Grupo Altiva &middot; Belo Horizonte, MG</p>
-          </div>
-          <span class="match-badge match-mid">76% fit</span>
-        </div>
-        <div class="tags">
-          <span class="tag">SAP</span>
-          <span class="tag">Suporte N2</span>
-          <span class="tag">SQL</span>
-        </div>
-      </li>
-
-      <li class="job-card">
-        <div class="job-card-top">
-          <div>
-            <p class="job-title">Coordenador(a) de Processos</p>
-            <p class="job-company">Fortex IndÃºstria &middot; Joinville, SC</p>
-          </div>
-          <span class="match-badge match-mid">68% fit</span>
-        </div>
-        <div class="tags">
-          <span class="tag">GestÃ£o de equipe</span>
-          <span class="tag">ERP</span>
-        </div>
-      </li>
-    </ul>
-
-    <p class="results-note">* Resultados de exemplo â€” esta pÃ¡gina ainda nÃ£o estÃ¡ conectada a uma busca real de vagas.</p>
-    <button id="restartBtn">Enviar outro currÃ­culo</button>
+    <p class="results-note" id="resultsNote">Vagas reais buscadas via Adzuna.</p>
+    <button id="restartBtn">Enviar outro currículo</button>
   </section>
 
-  <script src="app.js"></script>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
