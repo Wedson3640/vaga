@@ -110,10 +110,15 @@ async function fetchAdzunaJobs(what: string, where: string | null): Promise<Norm
 }
 
 async function fetchJoobleJobs(keywords: string, location: string | null): Promise<NormalizedJob[]> {
+  // A Jooble só retorna resultados quando "Brazil" aparece em inglês no campo location —
+  // "Brasil" (PT) ou só o nome da cidade isolado devolvem 0 resultados sempre, mesmo
+  // havendo vagas reais. O nome da cidade não parece filtrar (mesma contagem com ou sem
+  // ela), mas mantemos para não perder precisão caso a conta ganhe esse filtro no futuro.
+  const joobleLocation = location ? `${location}, Brazil` : "Brazil";
   const res = await fetch(`https://jooble.org/api/${JOOBLE_API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ keywords, location: location ?? "Brasil" }),
+    body: JSON.stringify({ keywords, location: joobleLocation }),
   });
   if (!res.ok) throw new Error(`Jooble respondeu ${res.status}: ${await res.text()}`);
   const body = await res.json();
