@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Job Search — Enviar Currículo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <main class="card" id="uploadCard">
+    <img src="assets/pip_flight_loop.gif" alt="Pip, the courier bird" class="mascot" id="mascot">
+    <h1>Envie seu currículo</h1>
+    <p class="subtitle">Vamos analisar seu perfil e procurar as melhores vagas para você.</p>
+
+    <label for="fileInput" class="dropzone" id="dropzone">
+      <span id="dropzoneText">Arraste o arquivo aqui ou clique para selecionar<br><small>PDF, DOC ou DOCX</small></span>
+    </label>
+    <input type="file" id="fileInput" accept=".pdf,.doc,.docx" hidden>
+
+    <button id="submitBtn" disabled>Iniciar busca</button>
+  </main>
+
+  <section class="card hidden" id="loadingCard">
+    <div class="radar">
+      <div class="radar-sweep"></div>
+      <img src="assets/pip_flight_loop.gif" alt="" class="mascot mascot-flying">
+    </div>
+    <h2 id="loadingTitle">Procurando as melhores vagas...</h2>
+    <p class="loading-step" id="loadingStep">Lendo seu currículo</p>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </section>
+
+  <section class="card hidden" id="doneCard">
+    <img src="assets/pip_flight_loop.gif" alt="Pip" class="mascot">
+    <h2>Prontinho!</h2>
+    <p class="subtitle">Encontramos vagas com potencial para o seu perfil.</p>
+    <button id="restartBtn">Enviar outro currículo</button>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
