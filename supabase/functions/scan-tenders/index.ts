@@ -30,7 +30,15 @@ const PAGE_SIZE = 50;
 // Teto de segurança por combinação UF×modalidade (500 registros) — evita que uma
 // modalidade muito movimentada (ex: Pregão Eletrônico) estoure o tempo da function.
 const MAX_PAGES_PER_COMBO = 10;
-const BATCH_SIZE = 5; // combinações processadas em paralelo por vez
+// O PNCP tem um rate limit agressivo (confirmado em teste: poucas dezenas de
+// chamadas rápidas já derrubam em 429). Por isso rodamos sequencial, com um
+// intervalo fixo entre chamadas, em vez de paralelizar combinações.
+const REQUEST_DELAY_MS = 700;
+const MAX_RETRIES_ON_429 = 4;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 type TenderMatch = {
   pncp_control_number: string;
@@ -73,11 +81,23 @@ async function fetchPage(
     pagina: String(pagina),
     tamanhoPagina: String(PAGE_SIZE),
   });
-  const res = await fetch(`https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error(`PNCP respondeu ${res.status} (uf=${uf} modalidade=${modalidade} pagina=${pagina}): ${await res.text()}`);
+  const url = `https://pncp.gov.br/api/consulta/v1/contratacoes/publicacao?${params.toString()}`;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES_ON_429; attempt++) {
+    await sleep(REQUEST_DELAY_MS);
+    const res = await fetch(url);
+    if (res.status === 429) {
+      const backoff = REQUEST_DELAY_MS * (attempt + 2); // espera crescente a cada retry
+      console.error(`429 do PNCP (uf=${uf} modalidade=${modalidade} pagina=${pagina}), tentativa ${attempt + 1}, aguardando ${backoff}ms`);
+      await sleep(backoff);
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`PNCP respondeu ${res.status} (uf=${uf} modalidade=${modalidade} pagina=${pagina}): ${await res.text()}`);
+    }
+    return res.json();
   }
-  return res.json();
+  throw new Error(`PNCP: rate limit persistente (uf=${uf} modalidade=${modalidade} pagina=${pagina})`);
 }
 
 async function scanCombo(
@@ -153,18 +173,15 @@ Deno.serve(async (req) => {
     const allMatches: TenderMatch[] = [];
     let failedCombos = 0;
 
-    for (let i = 0; i < combos.length; i += BATCH_SIZE) {
-      const batch = combos.slice(i, i + BATCH_SIZE);
-      const settled = await Promise.allSettled(
-        batch.map(([uf, modalidade]) => scanCombo(uf, modalidade, dataInicial, dataFinal)),
-      );
-      for (const result of settled) {
-        if (result.status === "fulfilled") {
-          allMatches.push(...result.value);
-        } else {
-          failedCombos++;
-          console.error("Combinação UF/modalidade falhou:", result.reason);
-        }
+    // Sequencial de propósito (ver comentário de REQUEST_DELAY_MS acima) — o PNCP
+    // derruba a conexão com 429 se receber várias chamadas em paralelo.
+    for (const [uf, modalidade] of combos) {
+      try {
+        const matches = await scanCombo(uf, modalidade, dataInicial, dataFinal);
+        allMatches.push(...matches);
+      } catch (err) {
+        failedCombos++;
+        console.error(`Combinação uf=${uf} modalidade=${modalidade} falhou:`, err);
       }
     }
 
