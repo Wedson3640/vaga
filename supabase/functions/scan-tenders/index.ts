@@ -32,6 +32,29 @@ const MODALIDADE_GROUPS: Record<string, number[]> = {
   "2": [7, 8, 9, 10, 11, 12],
 };
 const KEYWORDS = ["arquitet", "urbanis", "paisagis"];
+// Termos fortes que confirmam ser de verdade um serviço de arquitetura/urbanismo/
+// paisagismo, e não a palavra aparecendo só por coincidência (ex: no nome de uma
+// secretaria, ou "arquitetura de software").
+const POSITIVE_TERMS = [
+  "arquitetônic",
+  "arquitetura e engenharia",
+  "engenharia e arquitetura",
+  "projeto arquitet",
+  "paisagismo",
+  "paisagístic",
+  "urbanístic",
+  "urbanização",
+  "plano diretor",
+  "projeto de urbanismo",
+];
+// Termos de TI que costumam aparecer junto de "arquitetura" num sentido de
+// software/rede (arquitetura de sistema, cliente-servidor, Zero Trust...), não
+// de construção civil — vistos em falsos positivos reais durante os testes.
+const IT_CONTEXT_TERMS = [
+  "software", "sistema", "cliente-servidor", "zero trust", "rede de computadores",
+  "tecnologia da informação", "banco de dados", "nuvem", "saas", "hardware",
+  "aplicativo", "servidor dedicado", "licenciamento",
+];
 const PAGE_SIZE = 50;
 // Teto de segurança por combinação UF×modalidade (200 registros). Reduzido de 10
 // para 4 depois de confirmar em teste que um estado grande (CE) com modalidade
@@ -73,7 +96,27 @@ function formatDate(d: Date): string {
 
 function matchKeywords(objeto: string): string[] {
   const lower = objeto.toLowerCase();
-  return KEYWORDS.filter((kw) => lower.includes(kw));
+  const generic = KEYWORDS.filter((kw) => lower.includes(kw));
+  if (generic.length === 0) return [];
+
+  const hasPositive = POSITIVE_TERMS.some((t) => lower.includes(t));
+  const hasItContext = IT_CONTEXT_TERMS.some((t) => lower.includes(t));
+
+  // "arquitetura" perto de termos de TI (sem nenhum termo forte de construção
+  // junto) quase sempre é "arquitetura de software", não de construção — descarta.
+  const arquitetIndex = generic.indexOf("arquitet");
+  if (arquitetIndex !== -1 && hasItContext && !hasPositive) {
+    generic.splice(arquitetIndex, 1);
+  }
+
+  // "urbanis" sozinho (sem arquitet/paisagis nem termo forte) costuma ser só o
+  // nome do órgão/secretaria (ex: "Secretaria de Urbanismo"), não o serviço
+  // sendo contratado de fato — descarta.
+  if (generic.length === 1 && generic[0] === "urbanis" && !hasPositive) {
+    return [];
+  }
+
+  return generic;
 }
 
 async function fetchPage(
