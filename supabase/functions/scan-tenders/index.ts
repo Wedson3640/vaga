@@ -21,10 +21,16 @@ const supabase = createClient(
 );
 
 const UFS = ["PI", "MA", "PA", "CE"];
-// Modalidades de contratação da Lei 14.133/2021 (código PNCP 2-12). Iteramos por
+// Modalidades de contratação da Lei 14.133/2021 (código PNCP 2-12). Cobrimos
 // todas pra não perder edital de arquitetura publicado numa modalidade incomum
 // (ex: Concurso, usado às vezes para concursos de projeto arquitetônico).
-const MODALIDADES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+// Divididas em 2 grupos: há um gateway na frente da Edge Function com timeout
+// de ~150s, e uma UF com volume alto (confirmado em teste com CE) não cabe
+// processando as 11 de uma vez — por isso cada invocação roda só um grupo.
+const MODALIDADE_GROUPS: Record<string, number[]> = {
+  "1": [2, 3, 4, 5, 6],
+  "2": [7, 8, 9, 10, 11, 12],
+};
 const KEYWORDS = ["arquitet", "urbanis", "paisagis"];
 const PAGE_SIZE = 50;
 // Teto de segurança por combinação UF×modalidade (500 registros) — evita que uma
@@ -167,19 +173,27 @@ Deno.serve(async (req) => {
 
   try {
     // Edge Functions do Supabase têm só ~2s de tempo de CPU ativo por chamada
-    // (orçamento separado do limite de wall clock). Variar as 4 UF × 11
-    // modalidades numa chamada só estourava esse limite (erro 546
-    // WORKER_RESOURCE_LIMIT). Por isso cada invocação processa **uma UF só**,
-    // recebida no corpo da requisição — o cron semanal dispara uma chamada por
-    // estado (ver instruções de configuração).
+    // (orçamento separado do limite de wall clock), e há um gateway na frente
+    // com timeout de ~150s. Por isso cada invocação processa **uma UF e um
+    // grupo de modalidades só** — o cron semanal dispara uma chamada por
+    // combinação de estado×grupo (ver instruções de configuração: 4 UFs × 2
+    // grupos = 8 disparos por semana).
     const body = await req.json().catch(() => ({}));
     const uf = body?.uf;
+    const group = String(body?.group ?? "");
     if (!uf || !UFS.includes(uf)) {
       return new Response(
         JSON.stringify({ error: `Informe "uf" no corpo da requisição, um de: ${UFS.join(", ")}` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+    if (!MODALIDADE_GROUPS[group]) {
+      return new Response(
+        JSON.stringify({ error: `Informe "group" no corpo da requisição, um de: ${Object.keys(MODALIDADE_GROUPS).join(", ")}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const modalidades = MODALIDADE_GROUPS[group];
 
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -191,7 +205,7 @@ Deno.serve(async (req) => {
 
     // Sequencial de propósito (ver comentário de REQUEST_DELAY_MS acima) — o PNCP
     // derruba a conexão com 429 se receber várias chamadas em paralelo.
-    for (const modalidade of MODALIDADES) {
+    for (const modalidade of modalidades) {
       try {
         const matches = await scanCombo(uf, modalidade, dataInicial, dataFinal);
         allMatches.push(...matches);
