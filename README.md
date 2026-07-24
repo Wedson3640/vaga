@@ -1,13 +1,25 @@
-# Vaga — Envio de Currículo
+# Vaga
 
-Página estática simples para upload de currículo com animação de carregamento enquanto a busca de vagas "processa".
+App Next.js com duas páginas:
 
-Inspirada no mascote Pip do projeto [ai-job-search](https://github.com/MadsLorentzen/ai-job-search).
+- **`/`** — upload de currículo, extração de PDF/DOCX no navegador (pdf.js/mammoth) e busca real de vagas (Adzuna + Jooble) via Supabase.
+- **`/editais`** — painel de licitações públicas de arquitetura/engenharia (PI, MA, CE, PA), varridas semanalmente do PNCP e gravadas no Supabase.
+
+Inspirado no mascote Pip do projeto [ai-job-search](https://github.com/MadsLorentzen/ai-job-search).
 
 ## Rodando localmente
 
-Abra `index.html` diretamente no navegador — não precisa de servidor.
+```bash
+npm install
+npm run dev
+```
+
+Abra http://localhost:3000
 
 ## Deploy
 
-Site 100% estático (HTML/CSS/JS), pronto para deploy no Vercel sem configuração adicional.
+Deploy automático no Vercel (detecta Next.js pelo `package.json`, sem configuração adicional).
+
+## Backend
+
+O SQL das tabelas e o código das Edge Functions ficam em `supabase/` — aplicados manualmente no dashboard do Supabase (ver histórico do projeto para o passo a passo).

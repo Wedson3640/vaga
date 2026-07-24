@@ -80,6 +80,8 @@ type TenderMatch = {
   uf: string | null;
   municipio: string | null;
   modalidade: string | null;
+  numero_compra: string | null;
+  ano_compra: number | null;
   valor_estimado: number | null;
   data_publicacao: string | null;
   data_encerramento_proposta: string | null;
@@ -180,6 +182,8 @@ async function scanCombo(
       orgaoEntidade?: { razaoSocial?: string };
       unidadeOrgao?: { ufSigla?: string; municipioNome?: string };
       modalidadeNome?: string;
+      numeroCompra?: string;
+      anoCompra?: number;
       valorTotalEstimado?: number;
       dataPublicacaoPncp?: string;
       dataEncerramentoProposta?: string;
@@ -198,6 +202,8 @@ async function scanCombo(
         uf: item.unidadeOrgao?.ufSigla ?? null,
         municipio: item.unidadeOrgao?.municipioNome ?? null,
         modalidade: item.modalidadeNome ?? null,
+        numero_compra: item.numeroCompra ?? null,
+        ano_compra: item.anoCompra ?? null,
         valor_estimado: item.valorTotalEstimado ?? null,
         data_publicacao: item.dataPublicacaoPncp ?? null,
         data_encerramento_proposta: item.dataEncerramentoProposta ?? null,
