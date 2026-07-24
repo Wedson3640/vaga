@@ -33,15 +33,18 @@ const MODALIDADE_GROUPS: Record<string, number[]> = {
 };
 const KEYWORDS = ["arquitet", "urbanis", "paisagis"];
 const PAGE_SIZE = 50;
-// Teto de segurança por combinação UF×modalidade (500 registros) — evita que uma
-// modalidade muito movimentada (ex: Pregão Eletrônico) estoure o tempo da function.
-const MAX_PAGES_PER_COMBO = 10;
+// Teto de segurança por combinação UF×modalidade (200 registros). Reduzido de 10
+// para 4 depois de confirmar em teste que um estado grande (CE) com modalidade
+// muito movimentada (Pregão Eletrônico) estourava o timeout de ~150s do gateway
+// mesmo processando só metade das modalidades (grupo 1). Como o que procuramos
+// é raro dentro de cada modalidade, vale a troca de cobertura por confiabilidade.
+const MAX_PAGES_PER_COMBO = 4;
 // O PNCP tem um rate limit agressivo (confirmado em teste: em torno de 6-7
 // chamadas seguidas já derruba em 429, mesmo com ~1s de intervalo; com 3s
 // entre chamadas não houve mais erro). Por isso rodamos sequencial, com esse
 // intervalo, em vez de paralelizar combinações.
 const REQUEST_DELAY_MS = 3000;
-const MAX_RETRIES_ON_429 = 4;
+const MAX_RETRIES_ON_429 = 2;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
