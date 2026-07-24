@@ -2,6 +2,7 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { supabase } from "@/lib/supabase";
+import SiteNav from "@/components/SiteNav";
 
 const PDFJS_VERSION = "4.7.76";
 
@@ -201,14 +202,9 @@ export default function VagasClient() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0f1720] px-6 py-10 font-sans text-[#e6edf3]">
       <div className="flex w-full max-w-[440px] flex-col items-center">
-        <nav className="mb-6 flex gap-2">
-          <a href="/" className="rounded-full border border-[#5eead4] bg-[#2dd4bf1a] px-3.5 py-1.5 text-sm text-[#5eead4]">
-            Buscar Vagas
-          </a>
-          <a href="/editais" className="rounded-full border border-[#2a3742] px-3.5 py-1.5 text-sm text-[#8b98a5] hover:text-[#e6edf3]">
-            Editais de Arquitetura
-          </a>
-        </nav>
+        <div className="mb-6">
+          <SiteNav active="vagas" />
+        </div>
 
         {view === "upload" && (
           <main className="w-full rounded-2xl border border-[#2a3742] bg-[#1b2733] p-10 text-center shadow-2xl">

@@ -5,7 +5,11 @@ interface HeaderProps {
   onSearchChange: (value: string) => void;
 }
 
-const NAV_ITEMS = ["Início", "Sobre", "Como funciona", "Contato"];
+const NAV_ITEMS: Array<{ label: string; href: string; active?: boolean }> = [
+  { label: "Buscar Vagas", href: "/" },
+  { label: "Editais de Arquitetura", href: "/editais", active: true },
+  { label: "Leads Dev", href: "/leads" },
+];
 
 export default function Header({ searchValue, onSearchChange }: HeaderProps) {
   return (
@@ -19,23 +23,20 @@ export default function Header({ searchValue, onSearchChange }: HeaderProps) {
       </div>
 
       <nav aria-label="Navegação principal" className="hidden items-center gap-8 md:flex">
-        {NAV_ITEMS.map((item) => {
-          const isActive = item === "Início";
-          return (
-            <a
-              key={item}
-              href="#"
-              aria-current={isActive ? "page" : undefined}
-              className={
-                isActive
-                  ? "border-b-2 border-emerald pb-1 text-sm font-medium text-emerald"
-                  : "pb-1 text-sm font-medium text-text-secondary hover:text-text-primary"
-              }
-            >
-              {item}
-            </a>
-          );
-        })}
+        {NAV_ITEMS.map((item) => (
+          <a
+            key={item.href}
+            href={item.href}
+            aria-current={item.active ? "page" : undefined}
+            className={
+              item.active
+                ? "border-b-2 border-emerald pb-1 text-sm font-medium text-emerald"
+                : "pb-1 text-sm font-medium text-text-secondary hover:text-text-primary"
+            }
+          >
+            {item.label}
+          </a>
+        ))}
       </nav>
 
       <div className="relative order-3 w-full shrink-0 sm:order-none sm:w-[275px]">
