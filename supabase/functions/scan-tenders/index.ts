@@ -96,7 +96,14 @@ async function fetchPage(
     if (!res.ok) {
       throw new Error(`PNCP respondeu ${res.status} (uf=${uf} modalidade=${modalidade} pagina=${pagina}): ${await res.text()}`);
     }
-    return res.json();
+    // Quando não há nenhum resultado para a combinação, o PNCP às vezes responde
+    // 200 com corpo vazio em vez de um JSON com "data": [] — sem esse tratamento,
+    // res.json() quebra com "Unexpected end of JSON input".
+    const text = await res.text();
+    if (!text) {
+      return { data: [], totalPaginas: 1 };
+    }
+    return JSON.parse(text);
   }
   throw new Error(`PNCP: rate limit persistente (uf=${uf} modalidade=${modalidade} pagina=${pagina})`);
 }
